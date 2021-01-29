@@ -89,10 +89,10 @@ class Updater():
 
         print("Scraping Site...")
 
-        soulSelect = soup.select('div[class*="icon-c--13"] h2')[0]
         soulString = ""
 
         try:
+            soulSelect = soup.select('div[class*="icon-c--13"] h2')[0]
             soulSelect = soulSelect.contents[0]
             if ("Soul of the" in soulSelect):
                 soulString = soulSelect[12:]
@@ -122,6 +122,20 @@ class Updater():
             except Exception:
                 print("Unable to find Soul...exiting.")
                 exit()
+
+        if not os.path.isdir("icons"):
+            os.mkdir("icons")
+
+        if not os.path.isdir("icons/" + self.currentSoul.name.lower()):
+            os.mkdir("icons/" + self.currentSoul.name.lower())
+            
+        print("Deleting old icons if necessary...")
+        path = os.path.normpath("icons/%s/" % self.currentSoul.name.lower())
+        for file in os.listdir(path):
+            imagepath = os.path.join(path, file)
+            print("Deleting " + imagepath)
+            os.remove(imagepath)
+        print("Folder cleared.")
 
         # Profile Items
         for pi in ProfileItem:
@@ -168,7 +182,8 @@ class Updater():
                 optimized_image = pyguetzli.process_pil_image(image)
                 with open(outputpath, "wb") as f:
                     f.write(optimized_image)
-                if imagepath.find(".png") >= 0:
+                if imagepath != outputpath:
+                    print("Deleting " + imagepath)
                     os.remove(imagepath)
 
         print("File Compression Complete.")
@@ -185,13 +200,31 @@ class Updater():
                 cnopts=cnopts) as sftp:
             print("Connection Established")
             with sftp.cd(os.getenv('BASE_PATH')):
+                print("Checking for images folder...")
+                try:
+                    with sftp.cd('images'):
+                        pass
+                except IOError:
+                    print("Images folder not found. Creating...")
+                    sftp.mkdir('images')
+                print("Uploading Images...")
                 with sftp.cd('images'):
+                    try:
+                        with sftp.cd('%s' % self.currentSoul.name.lower()):
+                            pass
+                    except IOError:
+                        sftp.mkdir('%s' % self.currentSoul.name.lower())
                     with sftp.cd('%s' % self.currentSoul.name.lower()):
                         for file in os.listdir(path):
                             imagepath = os.path.join(path, file)
                             if os.path.isfile(imagepath):
                                 print("Uploading " + imagepath)
                                 sftp.put(imagepath)
+                try:
+                    with sftp.cd('datafiles'):
+                        pass
+                except IOError:
+                    sftp.mkdir('datafiles')
                 with sftp.cd('datafiles'):
                     print("Uploading JSON")
                     jsonpath = os.path.normpath("datafiles/" + self.currentSoul.name.lower() + "_itemids.json")  # noqa
