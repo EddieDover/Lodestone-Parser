@@ -8,6 +8,7 @@ import pyguetzli
 from PIL import Image
 import pysftp
 from dotenv import load_dotenv
+import re
 
 
 class Soul(Enum):
@@ -41,6 +42,23 @@ class Soul(Enum):
             if (esoul.name.lower() == isoul.lower()):
                 return esoul
         return Soul.NULL
+
+
+class HLSoul:
+    image: str = ''
+    soul: Soul = Soul.NULL
+
+    def __init__(self, image, soul):
+        self.image = image
+        self.soul = soul
+
+
+HLSouls = [
+    HLSoul("https://img.finalfantasyxiv.com/lds/h/x/B4Azydbn7Prubxt7OL9p1LZXZ0.png", Soul.FISHER),  # noqa
+    HLSoul("https://img.finalfantasyxiv.com/lds/h/A/aM2Dd6Vo4HW_UGasK7tLuZ6fu4.png", Soul.MINER),  # noqa
+    HLSoul("https://img.finalfantasyxiv.com/lds/h/A/aM2Dd6Vo4HW_UGasK7tLuZ6fu4.png", Soul.CULINARIAN),  # noqa
+    HLSoul("https://img.finalfantasyxiv.com/lds/h/I/jGRnjIlwWridqM-mIPNew6bhHM.png", Soul.BOTANIST)  # noqa
+]
 
 
 class ProfileItem(Enum):
@@ -110,15 +128,16 @@ class Updater():
                 soulSelect = soulSelect['src']
 
                 # TODO: Add other icons, but I'll do this as necessary.
-                if (soulSelect == "https://img.finalfantasyxiv.com/lds/h/x/B4Azydbn7Prubxt7OL9p1LZXZ0.png"):  # noqa
-                    print("Found Fisher Icon")
-                    self.currentSoul = Soul.FISHER
-                elif (soulSelect == "https://img.finalfantasyxiv.com/lds/h/A/aM2Dd6Vo4HW_UGasK7tLuZ6fu4.png"):  # noqa
-                    print("Found Miner Icon")
-                    self.currentSoul = Soul.MINER
-                elif (soulSelect == "https://img.finalfantasyxiv.com/lds/h/A/aM2Dd6Vo4HW_UGasK7tLuZ6fu4.png"):  # noqa
-                    print("Found Culinarian Icon")
-                    self.currentSoul = Soul.CULINARIAN
+                foundSoul = [soul for soul in HLSouls if soul == soulSelect][0]
+
+                if foundSoul is not None:
+                    print("Found %s Icon" % soulSelect.soul.name.lower())
+                    self.currentSoul = soulSelect.soul
+                else:
+                    print("Non-Soul class found but not hard-coded. Please validate:")  # noqa
+                    print(soulSelect)
+                    print("Exiting...")
+                    exit()
             except Exception:
                 print("Unable to find Soul...exiting.")
                 exit()
@@ -128,7 +147,7 @@ class Updater():
 
         if not os.path.isdir("icons/" + self.currentSoul.name.lower()):
             os.mkdir("icons/" + self.currentSoul.name.lower())
-            
+
         print("Deleting old icons if necessary...")
         path = os.path.normpath("icons/%s/" % self.currentSoul.name.lower())
         for file in os.listdir(path):
@@ -153,8 +172,16 @@ class Updater():
 
         self.jsonOutputString += ('"iLevel":"%s",') % int(round((self.iL / self.iCount)))  # noqa
 
-        # Normally I pull attributes here
-        # but this doesn't seem relevant for version 2
+        # Attributes
+        attribute_tables = soup.select(".character__param__list")
+        attribute_pull_regex = "<tr><th.*><span.*>(.+)</span></th><td.*>(.+)</td></tr>"  # noqa
+        p = re.compile(attribute_pull_regex, re.IGNORECASE)
+
+        for attribute_table in attribute_tables:
+            for content in attribute_table.contents:
+                m = p.match(content.__str__())
+                if m:
+                    self.jsonOutputString += ('"%s":%s,') % (m.group(1).lower(), m.group(2))  # noqa
 
         self.jsonOutputString += ('"LastUpdated":"%s"') % (datetime.utcnow() - datetime(1970, 1, 1)).total_seconds()  # noqa
 
