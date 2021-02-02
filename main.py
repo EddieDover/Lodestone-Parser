@@ -128,14 +128,14 @@ class Updater():
                 soulSelect = soulSelect['src']
 
                 # TODO: Add other icons, but I'll do this as necessary.
-                foundSoul = [soul for soul in HLSouls if soul == soulSelect][0]
+                foundSoul = [hls for hls in HLSouls if hls.image == soulSelect][0]
 
                 if foundSoul is not None:
-                    print("Found %s Icon" % soulSelect.soul.name.lower())
-                    self.currentSoul = soulSelect.soul
+                    print("Found %s Icon" % foundSoul.soul.name.lower())
+                    self.currentSoul = foundSoul.soul
                 else:
                     print("Non-Soul class found but not hard-coded. Please validate:")  # noqa
-                    print(soulSelect)
+                    print(foundSoul)
                     print("Exiting...")
                     exit()
             except Exception:
